@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlserver"
   url      = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 model jenis_transaksi {
@@ -39,7 +40,7 @@ model nota {
   id_transaksi Int       @unique
   foto_nota    String    @db.VarChar(255)
   detail_nota  String?
-  timestamp    DateTime  @default(now()) @db.Timestamptz(6)
+  timestamp    DateTime  @default(now()) @db.DateTimeOffset
   transaksi    transaksi @relation(fields: [id_transaksi], references: [id_transaksi], onDelete: Cascade, onUpdate: NoAction)
 }
 
@@ -48,9 +49,9 @@ model saldo {
   id_user           Int
   id_transaksi      Int       @unique
   saldo_hasil       Decimal   @db.Decimal(15, 2)
-  timestamp_catatan DateTime  @db.Timestamptz(6)
+  timestamp_catatan DateTime  @db.DateTimeOffset
   transaksi         transaksi @relation(fields: [id_transaksi], references: [id_transaksi], onDelete: Cascade, onUpdate: NoAction)
-  user              user      @relation(fields: [id_user], references: [id_user], onDelete: Cascade, onUpdate: NoAction)
+  user              user      @relation(fields: [id_user], references: [id_user], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model transaksi {
@@ -61,7 +62,7 @@ model transaksi {
   id_kategori      Int
   nominal          Decimal         @db.Decimal(15, 2)
   saldo_terakhir   Decimal         @db.Decimal(15, 2)
-  timestamp        DateTime        @default(now()) @db.Timestamptz(6)
+  timestamp        DateTime        @default(now()) @db.DateTimeOffset
   nota             nota?
   saldo            saldo?
   jenis_transaksi  jenis_transaksi @relation(fields: [id_jenis], references: [id_jenis], onDelete: NoAction, onUpdate: NoAction)

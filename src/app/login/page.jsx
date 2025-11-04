@@ -1,9 +1,11 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle } from "lucide-react";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
@@ -47,7 +49,10 @@ export default function LoginPage() {
     setTimeout(() => {
       setSuccessMessage("Login berhasil! Mengalihkan...");
       setIsLoading(false);
-      // router.push('/dashboard');
+      // Redirect ke dashboard
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 500);
     }, 1500);
   };
 

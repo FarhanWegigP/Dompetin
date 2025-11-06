@@ -1,9 +1,11 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Eye, EyeOff, Mail, Lock, User, AlertCircle, CheckCircle } from "lucide-react";
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     nickname: "",
     email: "",
@@ -16,6 +18,7 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [apiError, setApiError] = useState("");
 
   const validateForm = () => {
     const newErrors = {};
@@ -46,10 +49,6 @@ export default function RegisterPage() {
       newErrors.confirmPassword = "Password tidak cocok";
     }
 
-    if (!agreedToTerms) {
-      newErrors.terms = "Anda harus menyetujui syarat dan ketentuan";
-    }
-
     return newErrors;
   };
 
@@ -59,24 +58,72 @@ export default function RegisterPage() {
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: "" }));
     }
+    // Clear API error when user starts typing
+    if (apiError) {
+      setApiError("");
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const newErrors = validateForm();
     
+    // Reset messages
+    setApiError("");
+    setSuccessMessage("");
+    
+    // Validasi form
+    const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
 
     setIsLoading(true);
-    // Simulasi API call
-    setTimeout(() => {
-      setSuccessMessage("Akun berhasil dibuat! Mengalihkan ke login...");
+
+    try {
+      // Kirim data ke API
+      const response = await fetch('/api/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          nickname: formData.nickname,
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Handle error dari API
+        throw new Error(data.error || 'Registrasi gagal');
+      }
+
+      // Registrasi berhasil
+      setSuccessMessage("Akun berhasil dibuat! Mengalihkan ke halaman login...");
+      
+      // Reset form
+      setFormData({
+        nickname: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+      });
+      setAgreedToTerms(false);
+
+      // Redirect ke halaman login setelah 2 detik
+      setTimeout(() => {
+        router.push('/login');
+      }, 2000);
+
+    } catch (error) {
+      console.error('Registration error:', error);
+      setApiError(error.message || 'Terjadi kesalahan. Silakan coba lagi.');
+    } finally {
       setIsLoading(false);
-      // router.push('/login');
-    }, 1500);
+    }
   };
 
   const passwordStrength = formData.password
@@ -126,7 +173,7 @@ export default function RegisterPage() {
             </div>
             <div>
               <h3 className="text-white font-semibold mb-1">Tanpa Biaya</h3>
-              <p className="text-green-100 text-sm">Selamanya gratis selamanya</p>
+              <p className="text-green-100 text-sm">Selamanya gratis</p>
             </div>
           </div>
           
@@ -161,6 +208,14 @@ export default function RegisterPage() {
             <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start space-x-3">
               <CheckCircle className="text-green-600 flex-shrink-0 mt-0.5" size={20} />
               <p className="text-green-800 text-sm">{successMessage}</p>
+            </div>
+          )}
+
+          {/* API Error Message */}
+          {apiError && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-3">
+              <AlertCircle className="text-red-600 flex-shrink-0 mt-0.5" size={20} />
+              <p className="text-red-800 text-sm">{apiError}</p>
             </div>
           )}
 

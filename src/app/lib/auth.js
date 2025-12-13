@@ -11,8 +11,11 @@ export function verifyJwt(token) {
   }
 }
 
-export function getUserFromToken() {
-  const token = cookies().get("auth_token")?.value;
+export async function getUserFromToken() {
+  const cookieStore = await cookies(); // ⬅ WAJIB pakai await
+  const token = cookieStore.get("auth_token")?.value;
+
   if (!token) return null;
+
   return verifyJwt(token);
 }

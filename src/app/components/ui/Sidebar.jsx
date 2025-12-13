@@ -1,96 +1,93 @@
 "use client";
-import { useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  ArrowUpRight,
-  CreditCard,
-  FileText,
-  LogOut,
-  X,
-  Menu
-} from "lucide-react";
 
-export default function Sidebar({ onLogout }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const router = useRouter();
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { LayoutDashboard, Wallet, FileText, LogOut } from "lucide-react";
+
+export default function Sidebar() {
   const pathname = usePathname();
 
-  const menuItems = [
-    { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-    { icon: ArrowUpRight, label: "Transaction", path: "/transaction" },
-    { icon: CreditCard, label: "Loan & Debt", path: "/loandebt" },
-    { icon: FileText, label: "Bill Vault", path: "/billvault" },
+  const menu = [
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Transaction", href: "/transaction", icon: Wallet },
+    { name: "Loan & Debt", href: "/loandebt", icon: FileText },
+    { name: "Bill Vault", href: "/billvault", icon: FileText },
   ];
 
   return (
-    <>
-      {/* Sidebar */}
-      <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 transform transition-transform duration-200 ease-in-out
-        ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
-      >
-        <div className="h-full flex flex-col">
-          <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-green-600 dark:text-green-400">Dompet.in</h1>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="lg:hidden text-gray-500 dark:text-gray-300"
+    <aside className="w-60 bg-[#0D1B2A] text-white fixed h-screen flex flex-col">
+      <div className="p-6 text-2xl font-bold border-b border-gray-700">
+        Dompet.in
+      </div>
+
+      <nav className="flex-1 p-4 space-y-2">
+        {menu.map((item) => {
+          const Icon = item.icon;
+          const active = pathname.startsWith(item.href);
+
+          return (
+            <Link
+              key={item.name}
+              href={item.href}
+              className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition ${
+                active
+                  ? "bg-green-600 text-white"
+                  : "text-gray-300 hover:bg-gray-700"
+              }`}
             >
-              <X size={24} />
-            </button>
-          </div>
-
-          <nav className="flex-1 p-4 space-y-2">
-            {menuItems.map((item, index) => {
-              const Icon = item.icon;
-              const isActive = pathname.startsWith(item.path);
-
-              return (
-                <button
-                  key={index}
-                  onClick={() => router.push(item.path)}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition
-                  ${
-                    isActive
-                      ? "bg-green-50 text-green-600 font-medium dark:bg-green-900/30 dark:text-green-300"
-                      : "text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
-                  }`}
-                >
-                  <Icon size={20} />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-            <button
-              onClick={onLogout}
-              className="w-full flex items-center space-x-3 px-4 py-3 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 rounded-lg transition"
-            >
-              <LogOut size={20} />
-              <span>Keluar</span>
-            </button>
-          </div>
-        </div>
-      </aside>
-
-      {/* Overlay for mobile */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Mobile open button */}
-      <button
-        onClick={() => setSidebarOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-50 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-2 rounded-lg shadow-md"
-      >
-        <Menu size={22} />
-      </button>
-    </>
+              <Icon size={18} />
+              <span>{item.name}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    </aside>
   );
 }
+
+// "use client";
+
+// import Link from "next/link";
+// import { usePathname } from "next/navigation";
+// import { LayoutDashboard, Wallet, FileText, LogOut } from "lucide-react";
+
+// export default function Sidebar() {
+//   const pathname = usePathname();
+
+//   const menu = [
+//     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+//     { name: "Transaction", href: "/transaction", icon: Wallet },
+//     { name: "Loan & Debt", href: "/loandebt", icon: FileText },
+//     { name: "Bill Vault", href: "/billvault", icon: FileText },
+//   ];
+
+//   return (
+//     <aside className="w-60 bg-white border-r border-gray-200 text-gray-900 fixed h-screen flex flex-col shadow-sm">
+//       <div className="p-6 text-2xl font-bold border-b border-gray-200 text-green-600">
+//         Dompet.in
+//       </div>
+
+//       <nav className="flex-1 p-4 space-y-2">
+//         {menu.map((item) => {
+//           const Icon = item.icon;
+//           const active = pathname.startsWith(item.href);
+
+//           return (
+//             <Link
+//               key={item.name}
+//               href={item.href}
+//               className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition ${
+//                 active
+//                   ? "bg-green-600 text-white"
+//                   : "text-gray-700 hover:bg-gray-100"
+//               }`}
+//             >
+//               <Icon size={18} />
+//               <span>{item.name}</span>
+//             </Link>
+//           );
+//         })}
+//       </nav>
+//     </aside>
+//   );
+// }

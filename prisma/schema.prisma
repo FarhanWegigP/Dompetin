@@ -3,9 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlserver"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
-  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 model jenis_transaksi {
@@ -29,8 +28,8 @@ model kategori {
 model kategori_jenis_transaksi {
   id_jenis        Int
   id_kategori     Int
-  jenis_transaksi jenis_transaksi @relation(fields: [id_jenis], references: [id_jenis], onDelete: Cascade, onUpdate: NoAction)
-  kategori        kategori        @relation(fields: [id_kategori], references: [id_kategori], onDelete: Cascade, onUpdate: NoAction)
+  jenis_transaksi jenis_transaksi @relation(fields: [id_jenis], references: [id_jenis], onDelete: Cascade)
+  kategori        kategori        @relation(fields: [id_kategori], references: [id_kategori], onDelete: Cascade)
 
   @@id([id_jenis, id_kategori])
 }
@@ -40,18 +39,18 @@ model nota {
   id_transaksi Int       @unique
   foto_nota    String    @db.VarChar(255)
   detail_nota  String?
-  timestamp    DateTime  @default(now()) @db.DateTimeOffset
-  transaksi    transaksi @relation(fields: [id_transaksi], references: [id_transaksi], onDelete: Cascade, onUpdate: NoAction)
+  timestamp    DateTime  @default(now()) @db.Timestamptz
+  transaksi    transaksi @relation(fields: [id_transaksi], references: [id_transaksi], onDelete: Cascade)
 }
 
 model saldo {
   id_saldo          Int       @id @default(autoincrement())
   id_user           Int
   id_transaksi      Int       @unique
-  saldo_hasil       Decimal   @db.Decimal(15, 2)
-  timestamp_catatan DateTime  @db.DateTimeOffset
-  transaksi         transaksi @relation(fields: [id_transaksi], references: [id_transaksi], onDelete: Cascade, onUpdate: NoAction)
-  user              user      @relation(fields: [id_user], references: [id_user], onDelete: NoAction, onUpdate: NoAction)
+  saldo_hasil       Decimal?  @db.Decimal(18, 2)
+  timestamp_catatan DateTime  @default(now()) @db.Timestamptz
+  transaksi         transaksi @relation(fields: [id_transaksi], references: [id_transaksi])
+  user              user      @relation(fields: [id_user], references: [id_user])
 }
 
 model transaksi {
@@ -60,14 +59,14 @@ model transaksi {
   detail_transaksi String?
   id_jenis         Int
   id_kategori      Int
-  nominal          Decimal         @db.Decimal(15, 2)
-  saldo_terakhir   Decimal         @db.Decimal(15, 2)
-  timestamp        DateTime        @default(now()) @db.DateTimeOffset
+  nominal          Decimal?        @db.Decimal(18, 2)
+  timestamp        DateTime        @default(now()) @db.Timestamptz
+  saldo_terakhir   Decimal?        @default(0) @db.Decimal(18, 2)
   nota             nota?
   saldo            saldo?
-  jenis_transaksi  jenis_transaksi @relation(fields: [id_jenis], references: [id_jenis], onDelete: NoAction, onUpdate: NoAction)
-  kategori         kategori        @relation(fields: [id_kategori], references: [id_kategori], onDelete: NoAction, onUpdate: NoAction)
-  user             user            @relation(fields: [id_user], references: [id_user], onDelete: Cascade, onUpdate: NoAction)
+  jenis_transaksi  jenis_transaksi @relation(fields: [id_jenis], references: [id_jenis])
+  kategori         kategori        @relation(fields: [id_kategori], references: [id_kategori])
+  user             user            @relation(fields: [id_user], references: [id_user], onDelete: Cascade)
 }
 
 model user {

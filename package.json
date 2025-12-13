@@ -9,15 +9,23 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@prisma/client": "^6.16.3",
+    "@prisma/client": "^6.19.0",
     "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "date-fns": "^4.1.0",
+    "express": "^5.1.0",
+    "jose": "^6.1.2",
+    "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.545.0",
     "next": "15.5.4",
+    "next-swagger-doc": "^0.4.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-router-dom": "^7.9.4",
+    "recharts": "^3.5.1",
     "swagger-ui-dist": "^5.30.2",
     "swagger-ui-express": "^5.0.1",
+    "swagger-ui-react": "^5.30.3",
     "yaml": "^2.8.1"
   },
   "devDependencies": {
@@ -27,7 +35,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.5.4",
     "postcss": "^8.5.6",
-    "prisma": "^6.16.3",
+    "prisma": "^6.19.0",
     "tailwindcss": "^4.1.14"
   }
 }

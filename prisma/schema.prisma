@@ -3,77 +3,118 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
-model jenis_transaksi {
-  id_jenis                 Int                        @id @default(autoincrement())
-  jenis                    String                     @unique @db.VarChar(50)
-  kategori_jenis_transaksi kategori_jenis_transaksi[]
-  transaksi                transaksi[]
-}
-
-model kalender {
-  tanggal DateTime @id @db.Date
-}
-
-model kategori {
-  id_kategori              Int                        @id @default(autoincrement())
-  nama_kategori            String                     @unique @db.VarChar(100)
-  kategori_jenis_transaksi kategori_jenis_transaksi[]
-  transaksi                transaksi[]
-}
-
-model kategori_jenis_transaksi {
-  id_jenis        Int
-  id_kategori     Int
-  jenis_transaksi jenis_transaksi @relation(fields: [id_jenis], references: [id_jenis], onDelete: Cascade)
-  kategori        kategori        @relation(fields: [id_kategori], references: [id_kategori], onDelete: Cascade)
-
-  @@id([id_jenis, id_kategori])
-}
-
-model nota {
-  id_nota      Int       @id @default(autoincrement())
-  id_transaksi Int       @unique
-  foto_nota    String    @db.VarChar(255)
-  detail_nota  String?
-  timestamp    DateTime  @default(now()) @db.Timestamptz
-  transaksi    transaksi @relation(fields: [id_transaksi], references: [id_transaksi], onDelete: Cascade)
-}
-
-model saldo {
-  id_saldo          Int       @id @default(autoincrement())
-  id_user           Int
-  id_transaksi      Int       @unique
-  saldo_hasil       Decimal?  @db.Decimal(18, 2)
-  timestamp_catatan DateTime  @default(now()) @db.Timestamptz
-  transaksi         transaksi @relation(fields: [id_transaksi], references: [id_transaksi])
-  user              user      @relation(fields: [id_user], references: [id_user])
-}
-
-model transaksi {
-  id_transaksi     Int             @id @default(autoincrement())
-  id_user          Int
-  detail_transaksi String?
-  id_jenis         Int
-  id_kategori      Int
-  nominal          Decimal?        @db.Decimal(18, 2)
-  timestamp        DateTime        @default(now()) @db.Timestamptz
-  saldo_terakhir   Decimal?        @default(0) @db.Decimal(18, 2)
-  nota             nota?
-  saldo            saldo?
-  jenis_transaksi  jenis_transaksi @relation(fields: [id_jenis], references: [id_jenis])
-  kategori         kategori        @relation(fields: [id_kategori], references: [id_kategori])
-  user             user            @relation(fields: [id_user], references: [id_user], onDelete: Cascade)
-}
+//////////////////////////////////////////////////
+// MASTER TABLE
+//////////////////////////////////////////////////
 
 model user {
   id_user       Int         @id @default(autoincrement())
   email         String      @unique @db.VarChar(255)
   nickname      String      @db.VarChar(50)
   hash_password String      @db.VarChar(255)
-  saldo         saldo[]
+
   transaksi     transaksi[]
+  utang_piutang utang_piutang[]
+}
+
+
+model jenis_transaksi {
+  id_jenis  Int     @id @default(autoincrement())
+  jenis     String  @unique @db.VarChar(50)
+
+  transaksi transaksi[]
+  kategori_jenis_transaksi kategori_jenis_transaksi[]
+}
+
+model kategori {
+  id_kategori   Int    @id @default(autoincrement())
+  nama_kategori String @unique @db.VarChar(100)
+
+  transaksi transaksi[]
+  kategori_jenis_transaksi kategori_jenis_transaksi[]
+}
+
+model kalender {
+  tanggal DateTime @id @db.Date
+}
+
+//////////////////////////////////////////////////
+// PIVOT TABLE
+//////////////////////////////////////////////////
+
+model kategori_jenis_transaksi {
+  id_jenis    Int
+  id_kategori Int
+
+  jenis_transaksi jenis_transaksi @relation(fields: [id_jenis], references: [id_jenis], onDelete: Cascade)
+  kategori        kategori        @relation(fields: [id_kategori], references: [id_kategori], onDelete: Cascade)
+
+  @@id([id_jenis, id_kategori])
+}
+
+//////////////////////////////////////////////////
+// TRANSACTION CORE
+//////////////////////////////////////////////////
+
+model transaksi {
+  id_transaksi     Int      @id @default(autoincrement())
+  id_user          Int
+  detail_transaksi String?
+  id_jenis         Int
+  id_kategori      Int
+  nominal          Decimal?
+  timestamp        DateTime @default(now()) @db.Timestamptz
+
+  user            user            @relation(fields: [id_user], references: [id_user], onDelete: Cascade)
+  jenis_transaksi jenis_transaksi @relation(fields: [id_jenis], references: [id_jenis])
+  kategori        kategori        @relation(fields: [id_kategori], references: [id_kategori])
+  nota            nota?
+}
+
+model nota {
+  id_nota      Int      @id @default(autoincrement())
+  id_transaksi Int      @unique
+  foto_nota    String?  @db.Text
+  detail_nota  String?
+  timestamp    DateTime @default(now()) @db.Timestamptz
+
+  transaksi transaksi @relation(fields: [id_transaksi], references: [id_transaksi], onDelete: Cascade)
+}
+
+//////////////////////////////////////////////////
+// VIEW (READ ONLY)
+//////////////////////////////////////////////////
+
+model view_transaksi_lengkap {
+  id_transaksi     Int
+  id_user          Int
+  detail_transaksi String?
+  nominal           Decimal?
+  timestamp         DateTime
+  jenis             String?
+  nama_kategori     String?
+  foto_nota         String?
+  saldo_berjalan    Decimal?
+
+  @@map("view_transaksi_lengkap")
+  @@ignore
+}
+
+model utang_piutang {
+  id_utang_piutang Int      @id @default(autoincrement())
+  id_user          Int
+  nama             String   @db.VarChar(255)
+  jumlah           Decimal  @db.Decimal(15, 2)
+  catatan          String?  @db.Text
+  tipe             String   @db.VarChar(20) // "utang" atau "piutang"
+  timestamp        DateTime @default(now()) @db.Timestamptz
+
+  user user @relation(fields: [id_user], references: [id_user], onDelete: Cascade)
+
+  @@index([id_user, tipe])
 }

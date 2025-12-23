@@ -3,6 +3,9 @@ import { NextResponse } from "next/server";
 import prisma from "@/src/app/lib/prisma";
 import { getUserFromToken } from "@/src/app/lib/auth";
 
+// =======================
+// GET → Summary Total Utang & Piutang
+// =======================
 export async function GET() {
   try {
     const user = await getUserFromToken();
@@ -10,27 +13,35 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Total Utang (id_jenis = 3)
-    const utangAgg = await prisma.transaksi.aggregate({
+    // Aggregate total utang
+    const utangAgg = await prisma.utang_piutang.aggregate({
       where: {
         id_user: user.id_user,
-        id_jenis: 3,
+        tipe: "utang",
       },
-      _sum: { nominal: true },
+      _sum: {
+        jumlah: true,
+      },
     });
 
-    // Total Piutang (id_jenis = 4)
-    const piutangAgg = await prisma.transaksi.aggregate({
+    // Aggregate total piutang
+    const piutangAgg = await prisma.utang_piutang.aggregate({
       where: {
         id_user: user.id_user,
-        id_jenis: 4,
+        tipe: "piutang",
       },
-      _sum: { nominal: true },
+      _sum: {
+        jumlah: true,
+      },
     });
+
+    const totalUtang = Number(utangAgg._sum.jumlah ?? 0);
+    const totalPiutang = Number(piutangAgg._sum.jumlah ?? 0);
 
     return NextResponse.json({
-      totalUtang: Number(utangAgg._sum.nominal || 0),
-      totalPiutang: Number(piutangAgg._sum.nominal || 0),
+      totalUtang,
+      totalPiutang,
+      netPosition: totalPiutang - totalUtang, // positif = lebih banyak piutang
     });
   } catch (err) {
     console.error("GET /loandebt/summary error:", err);

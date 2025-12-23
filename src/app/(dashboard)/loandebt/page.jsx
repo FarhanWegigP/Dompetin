@@ -16,7 +16,6 @@ export default function LoanDebtPage() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editId, setEditId] = useState(null);
 
-  // Data state
   const [userData, setUserData] = useState({
     totalUtang: 0,
     totalPiutang: 0,
@@ -24,13 +23,22 @@ export default function LoanDebtPage() {
   const [utangList, setUtangList] = useState([]);
   const [piutangList, setPiutangList] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
 
-  // Fetch summary (total utang & piutang)
+  const formatCurrency = (amount) =>
+    new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(amount);
+
+  // Fetch summary
   const fetchSummary = async () => {
     try {
       const res = await fetch("/api/loandebt/summary", {
         credentials: "include",
       });
+      if (!res.ok) throw new Error("Failed to fetch summary");
       const data = await res.json();
       setUserData({
         totalUtang: data.totalUtang || 0,
@@ -47,6 +55,7 @@ export default function LoanDebtPage() {
       const res = await fetch("/api/loandebt?type=utang", {
         credentials: "include",
       });
+      if (!res.ok) throw new Error("Failed to fetch utang");
       const data = await res.json();
       setUtangList(data);
     } catch (err) {
@@ -60,6 +69,7 @@ export default function LoanDebtPage() {
       const res = await fetch("/api/loandebt?type=piutang", {
         credentials: "include",
       });
+      if (!res.ok) throw new Error("Failed to fetch piutang");
       const data = await res.json();
       setPiutangList(data);
     } catch (err) {
@@ -67,23 +77,24 @@ export default function LoanDebtPage() {
     }
   };
 
-  // Load data saat mount
+  // Load initial data
   useEffect(() => {
-    fetchSummary();
-    fetchUtang();
-    fetchPiutang();
+    const loadData = async () => {
+      setInitialLoading(true);
+      await Promise.all([fetchSummary(), fetchUtang(), fetchPiutang()]);
+      setInitialLoading(false);
+    };
+    loadData();
   }, []);
-
-  const formatCurrency = (amount) =>
-    new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-    }).format(amount);
 
   const handleSubmit = async () => {
     if (!nama || !jumlah) {
       alert("Nama dan Jumlah harus diisi!");
+      return;
+    }
+
+    if (Number(jumlah) <= 0) {
+      alert("Jumlah harus lebih dari 0!");
       return;
     }
 
@@ -96,12 +107,19 @@ export default function LoanDebtPage() {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ nama, jumlah, catatan }),
+          body: JSON.stringify({ 
+            nama, 
+            jumlah: Number(jumlah), 
+            catatan 
+          }),
         });
 
-        if (res.ok) {
-          alert("Data berhasil diupdate!");
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.error || "Failed to update");
         }
+
+        alert("Data berhasil diupdate!");
       } else {
         // Create
         const res = await fetch("/api/loandebt", {
@@ -116,15 +134,16 @@ export default function LoanDebtPage() {
           }),
         });
 
-        if (res.ok) {
-          alert("Data berhasil ditambahkan!");
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.error || "Failed to create");
         }
+
+        alert("Data berhasil ditambahkan!");
       }
 
       // Refresh data
-      fetchSummary();
-      fetchUtang();
-      fetchPiutang();
+      await Promise.all([fetchSummary(), fetchUtang(), fetchPiutang()]);
 
       // Reset form
       setShowModal(false);
@@ -135,7 +154,7 @@ export default function LoanDebtPage() {
       setEditId(null);
     } catch (err) {
       console.error("Submit error:", err);
-      alert("Terjadi kesalahan!");
+      alert(err.message || "Terjadi kesalahan!");
     } finally {
       setLoading(false);
     }
@@ -145,8 +164,8 @@ export default function LoanDebtPage() {
     setIsEditMode(true);
     setEditId(item.id);
     setNama(item.name);
-    setJumlah(item.amount);
-    setCatatan(item.note);
+    setJumlah(String(item.amount));
+    setCatatan(item.note || "");
     setActiveType(item.type);
     setShowModal(true);
   };
@@ -166,15 +185,18 @@ export default function LoanDebtPage() {
         credentials: "include",
       });
 
-      if (res.ok) {
-        alert("Data berhasil dihapus!");
-        fetchSummary();
-        fetchUtang();
-        fetchPiutang();
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to delete");
       }
+
+      alert("Data berhasil dihapus!");
+      
+      // Refresh data
+      await Promise.all([fetchSummary(), fetchUtang(), fetchPiutang()]);
     } catch (err) {
       console.error("Delete error:", err);
-      alert("Gagal menghapus data!");
+      alert(err.message || "Gagal menghapus data!");
     } finally {
       setLoading(false);
       setShowDeleteModal(false);
@@ -182,8 +204,16 @@ export default function LoanDebtPage() {
     }
   };
 
+  if (initialLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-screen">
+        <div className="text-gray-500">Memuat data...</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-4 md:p-6 space-y-6 bg-white-50 min-h-screen pb-24">
+    <div className="p-4 md:p-6 space-y-6 bg-gray-50 min-h-screen pb-24">
       {/* Summary Cards */}
       <div className="grid md:grid-cols-2 gap-4 md:gap-6">
         <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl p-6 text-white shadow-lg">
@@ -197,7 +227,7 @@ export default function LoanDebtPage() {
             </button>
           </div>
           <div className="text-3xl font-bold">
-            {showUtangBalance ? formatCurrency(userData.totalUtang) : "Rp. â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"}
+            {showUtangBalance ? formatCurrency(userData.totalUtang) : "Rp. ••••••••"}
           </div>
         </div>
 
@@ -212,7 +242,7 @@ export default function LoanDebtPage() {
             </button>
           </div>
           <div className="text-3xl font-bold">
-            {showPiutangBalance ? formatCurrency(userData.totalPiutang) : "Rp. â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"}
+            {showPiutangBalance ? formatCurrency(userData.totalPiutang) : "Rp. ••••••••"}
           </div>
         </div>
       </div>
@@ -365,6 +395,7 @@ export default function LoanDebtPage() {
           setNama("");
           setJumlah("");
           setCatatan("");
+          setActiveType("utang");
           setShowModal(true);
         }}
         className="fixed bottom-8 right-8 w-16 h-16 bg-gray-700 hover:bg-gray-800 text-white rounded-2xl shadow-2xl flex items-center justify-center transition transform hover:scale-105 z-40"
@@ -437,6 +468,17 @@ export default function LoanDebtPage() {
                   >
                     Piutang
                   </button>
+                </div>
+              )}
+              {isEditMode && (
+                <div className="text-center">
+                  <span className={`inline-block px-4 py-1 rounded-full text-sm font-medium ${
+                    activeType === "utang" 
+                      ? "bg-red-100 text-red-700" 
+                      : "bg-green-100 text-green-700"
+                  }`}>
+                    {activeType === "utang" ? "Utang" : "Piutang"}
+                  </span>
                 </div>
               )}
             </div>

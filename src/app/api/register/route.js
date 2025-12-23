@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
 import prisma from "@/src/app/lib/prisma";
 import jwt from "jsonwebtoken";
+export const runtime = "nodejs";
+
 
 export async function POST(request) {
   try {

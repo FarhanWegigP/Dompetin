@@ -17,13 +17,18 @@ export async function GET() {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-    // Saldo terakhir
-    const lastSaldo = await prisma.saldo.findFirst({
-      where: { id_user: user.id_user },
-      orderBy: { timestamp_catatan: "desc" },
-    });
+    // Saldo terakhir dari view
+    const saldoResult = await prisma.$queryRaw`
+      SELECT saldo_berjalan
+      FROM view_transaksi_lengkap
+      WHERE id_user = ${user.id_user}
+      ORDER BY timestamp DESC, id_transaksi DESC
+      LIMIT 1
+    `;
 
-    const saldo_terakhir = lastSaldo ? Number(lastSaldo.saldo_hasil) : 0;
+    const saldo_terakhir = saldoResult.length > 0 
+      ? Number(saldoResult[0].saldo_berjalan) 
+      : 0;
 
     // Pemasukan bulan ini (id_jenis = 1)
     const pemasukanAgg = await prisma.transaksi.aggregate({
@@ -38,6 +43,7 @@ export async function GET() {
       _sum: { nominal: true },
     });
 
+    // Pengeluaran bulan ini (id_jenis = 2)
     const pengeluaranAgg = await prisma.transaksi.aggregate({
       where: {
         id_user: user.id_user,

@@ -3,7 +3,9 @@ import { NextResponse } from "next/server";
 import prisma from "@/src/app/lib/prisma";
 import { getUserFromToken } from "@/src/app/lib/auth";
 
-// GET: Ambil semua data utang & piutang
+// =======================
+// GET → List Utang/Piutang
+// =======================
 export async function GET(request) {
   try {
     const user = await getUserFromToken();
@@ -12,72 +14,53 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const type = searchParams.get("type"); // 'utang' atau 'piutang'
+    const type = searchParams.get("type"); // "utang" atau "piutang"
 
-    // id_jenis: 3 = Utang, 4 = Piutang (sesuaikan dengan data di tabel jenis_transaksi)
-    const jenisMap = {
-      utang: 3,
-      piutang: 4,
-    };
-
-    const where = {
-      id_user: user.id_user,
-    };
-
-    if (type && jenisMap[type]) {
-      where.id_jenis = jenisMap[type];
+    if (!type || (type !== "utang" && type !== "piutang")) {
+      return NextResponse.json(
+        { error: "Type harus 'utang' atau 'piutang'" },
+        { status: 400 }
+      );
     }
 
-    const data = await prisma.transaksi.findMany({
-      where,
-      include: {
-        kategori: true,
-        jenis_transaksi: true,
+    const data = await prisma.utang_piutang.findMany({
+      where: {
+        id_user: user.id_user,
+        tipe: type,
       },
       orderBy: {
         timestamp: "desc",
       },
     });
 
-    // Group by nama (kategori) untuk menghitung total, terbayar, sisa
-    const grouped = {};
+    // Format response
+    const formatted = data.map((item) => ({
+      id: item.id_utang_piutang,
+      name: item.nama,
+      amount: Number(item.jumlah),
+      note: item.catatan,
+      type: item.tipe,
+      date: new Date(item.timestamp).toLocaleDateString("id-ID", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }),
+      timestamp: item.timestamp,
+    }));
 
-    data.forEach((item) => {
-      const key = item.id_kategori;
-      const nama = item.kategori?.nama_kategori || item.detail_transaksi || "Tanpa Nama";
-      const nominal = Number(item.nominal) || 0;
-      const jenis = item.id_jenis;
-
-      if (!grouped[key]) {
-        grouped[key] = {
-          id: item.id_transaksi,
-          name: nama,
-          type: jenis === 3 ? "utang" : "piutang",
-          amount: 0,
-          paid: 0,
-          date: new Date(item.timestamp).toLocaleDateString("id-ID"),
-          note: item.detail_transaksi || "",
-          transactions: [],
-        };
-      }
-
-      grouped[key].transactions.push(item);
-      grouped[key].amount += nominal;
-    });
-
-    const result = Object.values(grouped);
-
-    return NextResponse.json(result);
+    return NextResponse.json(formatted);
   } catch (err) {
     console.error("GET /loandebt error:", err);
     return NextResponse.json(
-      { error: "Failed fetching loan/debt data" },
+      { error: "Failed fetching data" },
       { status: 500 }
     );
   }
 }
 
-// POST: Tambah utang/piutang baru
+// =======================
+// POST → Tambah Utang/Piutang
+// =======================
 export async function POST(request) {
   try {
     const user = await getUserFromToken();
@@ -86,70 +69,55 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { nama, jumlah, catatan, type, tanggal } = body;
+    const { nama, jumlah, catatan, type } = body;
 
+    // Validasi
     if (!nama || !jumlah || !type) {
       return NextResponse.json(
-        { error: "Data tidak lengkap" },
+        { error: "Nama, jumlah, dan type harus diisi" },
         { status: 400 }
       );
     }
 
-    // id_jenis: 3 = Utang, 4 = Piutang
-    const id_jenis = type === "utang" ? 3 : 4;
-
-    // Cari atau buat kategori berdasarkan nama
-    let kategori = await prisma.kategori.findFirst({
-      where: {
-        nama_kategori: nama,
-      },
-    });
-
-    if (!kategori) {
-      kategori = await prisma.kategori.create({
-        data: {
-          nama_kategori: nama,
-        },
-      });
-
-      // Link kategori dengan jenis transaksi
-      await prisma.kategori_jenis_transaksi.create({
-        data: {
-          id_jenis,
-          id_kategori: kategori.id_kategori,
-        },
-      });
+    if (type !== "utang" && type !== "piutang") {
+      return NextResponse.json(
+        { error: "Type harus 'utang' atau 'piutang'" },
+        { status: 400 }
+      );
     }
 
-    // Buat tanggal
-    let finalDate;
-    if (tanggal) {
-      finalDate = new Date(`${tanggal}T00:00:00+07:00`);
-    } else {
-      finalDate = new Date(new Date().getTime() + 7 * 60 * 60 * 1000);
+    if (typeof jumlah !== "number" || jumlah <= 0) {
+      return NextResponse.json(
+        { error: "Jumlah harus berupa angka positif" },
+        { status: 400 }
+      );
     }
 
-    // Buat transaksi
-    const transaksi = await prisma.transaksi.create({
+    // Insert data
+    const newData = await prisma.utang_piutang.create({
       data: {
         id_user: user.id_user,
-        detail_transaksi: catatan || nama,
-        id_jenis,
-        id_kategori: kategori.id_kategori,
-        nominal: Number(jumlah),
-        timestamp: finalDate,
-        saldo_terakhir: 0, // Tidak mempengaruhi saldo
+        nama,
+        jumlah,
+        catatan: catatan || null,
+        tipe: type,
       },
     });
 
     return NextResponse.json({
       success: true,
-      data: transaksi,
+      data: {
+        id: newData.id_utang_piutang,
+        name: newData.nama,
+        amount: Number(newData.jumlah),
+        note: newData.catatan,
+        type: newData.tipe,
+      },
     });
   } catch (err) {
     console.error("POST /loandebt error:", err);
     return NextResponse.json(
-      { error: "Failed adding loan/debt" },
+      { error: "Failed creating data" },
       { status: 500 }
     );
   }

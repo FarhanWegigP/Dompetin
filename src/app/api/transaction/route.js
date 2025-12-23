@@ -1,130 +1,26 @@
-// import { NextResponse } from "next/server";
-// import prisma from "@/src/app/lib/prisma";
-// import { getUserFromToken } from "@/src/app/lib/auth";
-
-// // ------------------------------
-// // POST : CREATE TRANSACTION
-// // ------------------------------
-// export async function POST(request) {
-//   try {
-//     const body = await request.json();
-//     const { nominal, deskripsi, id_jenis, id_kategori, tanggal } = body;
-
-//     if (!nominal || !id_jenis || !id_kategori) {
-//       return NextResponse.json(
-//         { error: "Data tidak lengkap" },
-//         { status: 400 }
-//       );
-//     }
-
-//     const user = await getUserFromToken();
-//     if (!user) {
-//       return NextResponse.json(
-//         { error: "Unauthorized" },
-//         { status: 401 }
-//       );
-//     }
-
-//     // Ambil saldo terakhir dari tabel saldo
-//     const lastSaldo = await prisma.saldo.findFirst({
-//       where: { id_user: user.id_user },
-//       orderBy: { timestamp_catatan: "desc" },
-//     });
-
-//     const prevSaldo = lastSaldo ? Number(lastSaldo.saldo_hasil) : 0;
-
-//     // Hitung saldo baru
-//     const newSaldo =
-//       id_jenis === 1
-//         ? prevSaldo + nominal // pemasukan
-//         : prevSaldo - nominal; // pengeluaran
-
-//     // HYBRID DATE:
-//     // kalau user kirim tanggal (YYYY-MM-DD) -> pakai itu
-//     // kalau tidak, fallback ke tanggal hari ini
-//     const finalDate = tanggal ? new Date(tanggal) : new Date();
-
-//     // 1. Insert transaksi
-//     const transaksi = await prisma.transaksi.create({
-//       data: {
-//         id_user: user.id_user,
-//         detail_transaksi: deskripsi ?? "",
-//         id_jenis,
-//         id_kategori,
-//         nominal,
-//         saldo_terakhir: newSaldo,
-//         timestamp: finalDate, // pake tanggal hybrid
-//       },
-//     });
-
-//     // 2. Insert saldo baru
-//     await prisma.saldo.create({
-//       data: {
-//         id_user: user.id_user,
-//         id_transaksi: transaksi.id_transaksi,
-//         saldo_hasil: newSaldo,
-//         timestamp_catatan: new Date(), // catatan saldo tetap waktu dibuat
-//       },
-//     });
-
-//     return NextResponse.json({
-//       success: true,
-//       transaksi,
-//       saldo_baru: newSaldo,
-//     });
-//   } catch (err) {
-//     console.error("POST transaksi error:", err);
-//     return NextResponse.json(
-//       { error: "Failed adding transaction" },
-//       { status: 500 }
-//     );
-//   }
-// }
-
-// // ------------------------------
-// // GET : LIST TRANSACTION
-// // ------------------------------
-// export async function GET() {
-//   try {
-//     const user = await getUserFromToken();
-
-//     if (!user) {
-//       return NextResponse.json(
-//         { error: "Unauthorized" },
-//         { status: 401 }
-//       );
-//     }
-
-//     const transaksi = await prisma.transaksi.findMany({
-//       where: { id_user: user.id_user },
-//       orderBy: { timestamp: "desc" },
-//       include: {
-//         kategori: true,
-//         jenis_transaksi: true,
-//       },
-//     });
-
-//     return NextResponse.json(transaksi);
-//   } catch (err) {
-//     console.error("GET transaksi error:", err);
-//     return NextResponse.json(
-//       { error: "Failed fetching transaction" },
-//       { status: 500 }
-//     );
-//   }
-// }
+// src/app/api/transaction/route.js
 import { NextResponse } from "next/server";
 import prisma from "@/src/app/lib/prisma";
 import { getUserFromToken } from "@/src/app/lib/auth";
 
-//  POST → Tambah Transaksi 
+// =======================
+// POST → Tambah Transaksi
+// =======================
 export async function POST(request) {
   try {
     const body = await request.json();
     const { nominal, deskripsi, id_jenis, id_kategori, tanggal } = body;
 
-    if (!nominal || !id_jenis || !id_kategori) {
-      return NextResponse.json({ error: "Data tidak lengkap" }, { status: 400 });
+    // Validasi
+    if (
+      typeof nominal !== "number" ||
+      typeof id_jenis !== "number" ||
+      typeof id_kategori !== "number"
+    ) {
+      return NextResponse.json(
+        { error: "Payload tidak valid", body },
+        { status: 400 }
+      );
     }
 
     const user = await getUserFromToken();
@@ -132,28 +28,12 @@ export async function POST(request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const lastSaldo = await prisma.saldo.findFirst({
-      where: { id_user: user.id_user },
-      orderBy: { timestamp_catatan: "desc" },
-    });
+    // Format tanggal dengan zona waktu WIB (UTC+7)
+    const finalDate = tanggal
+      ? new Date(`${tanggal}T00:00:00+07:00`)
+      : new Date(Date.now() + 7 * 60 * 60 * 1000);
 
-    const prevSaldo = lastSaldo ? Number(lastSaldo.saldo_hasil) : 0;
-
-    const newSaldo =
-      id_jenis === 1
-        ? prevSaldo + Number(nominal)
-        : prevSaldo - Number(nominal);
-
-    // FIX TANGGAL → PAKSA WIB (UTC+7)
-    let finalDate;
-    if (tanggal) {
-      // Format: "2025-12-04" → "2025-12-04T00:00:00+07:00"
-      finalDate = new Date(`${tanggal}T00:00:00+07:00`);
-    } else {
-      // Hari ini, tapi dipaksa WIB
-      finalDate = new Date(new Date().getTime() + 7 * 60 * 60 * 1000);
-    }
-
+    // Insert transaksi
     const transaksi = await prisma.transaksi.create({
       data: {
         id_user: user.id_user,
@@ -161,37 +41,44 @@ export async function POST(request) {
         id_jenis,
         id_kategori,
         nominal,
-        saldo_terakhir: newSaldo,
         timestamp: finalDate,
       },
     });
 
-    await prisma.saldo.create({
-      data: {
-        id_user: user.id_user,
-        id_transaksi: transaksi.id_transaksi,
-        saldo_hasil: newSaldo,
-        timestamp_catatan: new Date(new Date().getTime() + 7 * 60 * 60 * 1000),
-      },
-    });
+    // Ambil saldo terbaru dari view setelah insert
+    const saldoView = await prisma.$queryRaw`
+      SELECT saldo_berjalan
+      FROM view_transaksi_lengkap
+      WHERE id_transaksi = ${transaksi.id_transaksi}
+      LIMIT 1
+    `;
+
+    const saldo_baru =
+      saldoView.length > 0 ? Number(saldoView[0].saldo_berjalan) : 0;
 
     return NextResponse.json({
       success: true,
       transaksi,
-      saldo_baru: newSaldo,
+      saldo_baru,
     });
   } catch (err) {
-    console.error("POST transaksi error:", err);
+    console.error("=== POST TRANSACTION ERROR ===");
+    console.error(err);
+    console.error("MESSAGE:", err.message);
+
     return NextResponse.json(
-      { error: "Failed adding transaction" },
+      {
+        error: "Failed adding transaction",
+        message: err.message,
+      },
       { status: 500 }
     );
   }
 }
 
-
-
-//  GET → Semua Transaksi User
+// =======================
+// GET → List Transaksi dengan Pagination
+// =======================
 export async function GET(request) {
   try {
     const user = await getUserFromToken();
@@ -200,21 +87,26 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get("page") || "1");
-    const pageSize = parseInt(searchParams.get("pageSize") || "15");
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const pageSize = parseInt(searchParams.get("pageSize") || "15", 10);
 
     const skip = (page - 1) * pageSize;
 
+    // Total count
+    const total = await prisma.transaksi.count({
+      where: { id_user: user.id_user },
+    });
+
+    // Data transaksi
     const transaksi = await prisma.transaksi.findMany({
       where: { id_user: user.id_user },
       orderBy: { timestamp: "desc" },
-      include: { kategori: true, jenis_transaksi: true },
       skip,
       take: pageSize,
-    });
-
-    const total = await prisma.transaksi.count({
-      where: { id_user: user.id_user },
+      include: {
+        kategori: true,
+        jenis_transaksi: true,
+      },
     });
 
     return NextResponse.json({
@@ -225,8 +117,10 @@ export async function GET(request) {
       totalPages: Math.ceil(total / pageSize),
     });
   } catch (err) {
-    console.error("GET transaksi error:", err);
-    return NextResponse.json({ error: "Failed fetching" }, { status: 500 });
+    console.error("GET /transaction error:", err);
+    return NextResponse.json(
+      { error: "Failed fetching transactions" },
+      { status: 500 }
+    );
   }
 }
-

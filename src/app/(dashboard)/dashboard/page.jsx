@@ -9,8 +9,23 @@ import {
   EyeOff,
   TrendingUp,
   Wallet,
+  Calendar,
 } from "lucide-react";
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from "recharts";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -26,6 +41,18 @@ export default function DashboardPage() {
   const [chartType, setChartType] = useState("expense");
   const [chartData, setChartData] = useState([]);
   const [chartLoading, setChartLoading] = useState(false);
+
+  // Flow chart state (line chart dengan date range)
+  const [flowData, setFlowData] = useState([]);
+  const [flowLoading, setFlowLoading] = useState(false);
+  const [flowStartDate, setFlowStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  });
+  const [flowEndDate, setFlowEndDate] = useState(() => {
+    return new Date().toISOString().split('T')[0];
+  });
 
   // Color palettes - grouped by shades
   const INCOME_COLORS = [
@@ -140,6 +167,39 @@ export default function DashboardPage() {
     loadCategorySummary("expense");
   }, []);
 
+  // Load flow data function
+  async function loadFlowData() {
+    try {
+      setFlowLoading(true);
+      const res = await fetch(
+        `/api/transaction/flow?start=${flowStartDate}&end=${flowEndDate}`,
+        { credentials: "include" }
+      );
+      const data = await res.json();
+
+      // Transform untuk chart
+      const transformed = data.data.map((item) => ({
+        date: new Date(item.date).toLocaleDateString("id-ID", {
+          day: "2-digit",
+          month: "short",
+        }),
+        saldo: item.saldo,
+        fullDate: item.date,
+      }));
+
+      setFlowData(transformed);
+    } catch (err) {
+      console.error("Failed to load flow data:", err);
+    } finally {
+      setFlowLoading(false);
+    }
+  }
+
+  // Load flow data when date range changes
+  useEffect(() => {
+    loadFlowData();
+  }, [flowStartDate, flowEndDate]);
+
   const CustomPieTooltip = ({ active, payload }) => {
     if (!active || !payload || !payload.length) return null;
 
@@ -232,21 +292,19 @@ export default function DashboardPage() {
             <div className="inline-flex rounded-full bg-gray-100 p-1">
               <button
                 onClick={() => loadCategorySummary("income")}
-                className={`px-3 py-1 text-xs rounded-full font-medium transition ${
-                  chartType === "income"
-                    ? "bg-white shadow text-green-600"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
+                className={`px-3 py-1 text-xs rounded-full font-medium transition ${chartType === "income"
+                  ? "bg-white shadow text-green-600"
+                  : "text-gray-500 hover:text-gray-700"
+                  }`}
               >
                 Pemasukan
               </button>
               <button
                 onClick={() => loadCategorySummary("expense")}
-                className={`px-3 py-1 text-xs rounded-full font-medium transition ${
-                  chartType === "expense"
-                    ? "bg-white shadow text-red-600"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
+                className={`px-3 py-1 text-xs rounded-full font-medium transition ${chartType === "expense"
+                  ? "bg-white shadow text-red-600"
+                  : "text-gray-500 hover:text-gray-700"
+                  }`}
               >
                 Pengeluaran
               </button>
@@ -339,11 +397,10 @@ export default function DashboardPage() {
                 >
                   <div className="flex items-center space-x-4">
                     <div
-                      className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                        t.type === "income"
-                          ? "bg-green-100 text-green-600"
-                          : "bg-red-100 text-red-600"
-                      }`}
+                      className={`w-12 h-12 rounded-full flex items-center justify-center ${t.type === "income"
+                        ? "bg-green-100 text-green-600"
+                        : "bg-red-100 text-red-600"
+                        }`}
                     >
                       {t.type === "income" ? (
                         <ArrowDownRight size={20} />
@@ -361,9 +418,8 @@ export default function DashboardPage() {
                   </div>
 
                   <div
-                    className={`text-lg font-bold ${
-                      t.type === "income" ? "text-green-600" : "text-red-600"
-                    }`}
+                    className={`text-lg font-bold ${t.type === "income" ? "text-green-600" : "text-red-600"
+                      }`}
                   >
                     {t.type === "income" ? "+" : "-"}
                     {formatCurrency(t.amount)}
@@ -372,6 +428,158 @@ export default function DashboardPage() {
               ))
             )}
           </div>
+        </div>
+      </div>
+
+      {/* LINE CHART - Flow Keuangan Per Periode */}
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+          <h3 className="text-lg font-bold text-gray-900">
+            Flow Keuangan Anda
+          </h3>
+
+          {/* Date Range Picker */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Calendar size={16} className="text-gray-400" />
+              <input
+                type="date"
+                value={flowStartDate}
+                onChange={(e) => setFlowStartDate(e.target.value)}
+                className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+            </div>
+            <span className="text-gray-400">-</span>
+            <input
+              type="date"
+              value={flowEndDate}
+              onChange={(e) => setFlowEndDate(e.target.value)}
+              className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+          </div>
+        </div>
+
+        <div className="h-72">
+          {flowLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-gray-400 text-sm flex items-center">
+                <TrendingUp className="mr-2 opacity-50" />
+                Memuat grafik...
+              </div>
+            </div>
+          ) : flowData.length === 0 ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <TrendingUp size={48} className="mx-auto text-gray-300 mb-2" />
+                <p className="text-gray-400 text-sm">
+                  Tidak ada data untuk periode ini
+                </p>
+              </div>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={flowData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis
+                  dataKey="date"
+                  stroke="#9ca3af"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  stroke="#9ca3af"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) =>
+                    value >= 1000000
+                      ? `${(value / 1000000).toFixed(1)}jt`
+                      : value >= 1000
+                        ? `${(value / 1000).toFixed(0)}rb`
+                        : value
+                  }
+                />
+                <Tooltip
+                  formatter={(value) => [formatCurrency(value), "Saldo"]}
+                  contentStyle={{
+                    backgroundColor: "white",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "8px",
+                    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="saldo"
+                  stroke="#10b981"
+                  strokeWidth={2}
+                  dot={{ fill: "#10b981", strokeWidth: 2, r: 3 }}
+                  activeDot={{ r: 6, fill: "#10b981" }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      {/* BAR CHART - Pemasukan vs Pengeluaran (Horizontal Bar, Bulan Ini) */}
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-lg font-bold text-gray-900 mb-4">
+          Pemasukan dan Pengeluaran Anda
+        </h3>
+        <p className="text-sm text-gray-500 mb-4">Bulan ini</p>
+
+        <div className="h-40">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={[
+                { name: "Pemasukan", value: income, fill: "#10b981" },
+                { name: "Pengeluaran", value: expense, fill: "#ef4444" },
+              ]}
+              layout="vertical"
+              margin={{ left: 20, right: 20 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
+              <XAxis
+                type="number"
+                stroke="#9ca3af"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) =>
+                  value >= 1000000
+                    ? `${(value / 1000000).toFixed(1)}jt`
+                    : value >= 1000
+                      ? `${(value / 1000).toFixed(0)}rb`
+                      : value
+                }
+              />
+              <YAxis
+                type="category"
+                dataKey="name"
+                stroke="#9ca3af"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+                width={90}
+              />
+              <Tooltip
+                formatter={(value) => [formatCurrency(value)]}
+                contentStyle={{
+                  backgroundColor: "white",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
+                  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                }}
+              />
+              <Bar
+                dataKey="value"
+                radius={[0, 4, 4, 0]}
+                barSize={32}
+              />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </div>

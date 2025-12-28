@@ -204,7 +204,9 @@ export default function DashboardPage() {
     if (!active || !payload || !payload.length) return null;
 
     const item = payload[0];
-    const percent = (item.percent * 100).toFixed(1);
+    // Hitung total dari chartData untuk mendapatkan persentase yang benar
+    const total = chartData.reduce((sum, entry) => sum + entry.value, 0);
+    const percent = total > 0 ? ((item.value / total) * 100).toFixed(1) : 0;
 
     return (
       <div className="bg-white px-4 py-3 border border-gray-200 shadow-lg rounded-lg">

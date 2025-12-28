@@ -181,9 +181,9 @@ export async function DELETE(request) {
         const urlParts = notaData.foto_nota.split('/nota-bucket/');
         const filePath = urlParts.length > 1 ? urlParts[1] : null;
 
-        // 3. Delete transaction (will cascade delete receipt due to FK constraint) using Prisma
-        await prisma.transaksi.delete({
-            where: { id_transaksi: notaData.transaksi.id_transaksi }
+        // 3. Delete only the receipt record (not the transaction) using Prisma
+        await prisma.nota.delete({
+            where: { id_nota: idNota }
         });
 
         // 4. Delete image from storage

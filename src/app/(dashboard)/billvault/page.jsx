@@ -10,7 +10,6 @@ import {
   Plus,
   X,
   Loader2,
-  Sparkles,
 } from "lucide-react";
 import {
   JENIS_TRANSAKSI,
@@ -451,42 +450,7 @@ export default function BillVaultPage() {
                 </div>
               </div>
 
-              {/* OCR Results Display */}
-              {ocrResults && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Sparkles className="text-green-600" size={20} />
-                    <h3 className="font-semibold text-green-900">Hasil Scan OCR</h3>
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Merchant:</span>
-                      <span className="font-medium">{ocrResults.merchant || 'N/A'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Total:</span>
-                      <span className="font-medium">{formatCurrency(ocrResults.total || 0)}</span>
-                    </div>
-                    {ocrResults.items && ocrResults.items.length > 0 && (
-                      <div>
-                        <span className="text-gray-600">Items:</span>
-                        <ul className="ml-4 mt-1">
-                          {ocrResults.items.slice(0, 3).map((item, idx) => (
-                            <li key={idx} className="text-xs">
-                              {item.name} - {formatCurrency(item.price)}
-                            </li>
-                          ))}
-                          {ocrResults.items.length > 3 && (
-                            <li className="text-xs text-gray-500">
-                              +{ocrResults.items.length - 3} lainnya
-                            </li>
-                          )}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+
 
               {/* Jenis Transaksi */}
               <div>
@@ -658,14 +622,7 @@ export default function BillVaultPage() {
                     {formatCurrency(selectedBill.transaksi?.nominal || 0)}
                   </span>
                 </div>
-                {selectedBill.detail_nota && (
-                  <div className="pb-4 border-b border-gray-200">
-                    <span className="text-gray-600 block mb-2">Detail OCR</span>
-                    <p className="text-sm text-gray-900 whitespace-pre-wrap bg-gray-50 p-3 rounded">
-                      {selectedBill.detail_nota}
-                    </p>
-                  </div>
-                )}
+
               </div>
 
               {/* Actions */}

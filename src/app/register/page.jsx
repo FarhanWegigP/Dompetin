@@ -420,7 +420,7 @@ export default function RegisterPage() {
           {/* Social Register */}
           <button
   type="button"
-  onClick={() => signIn("github", { callbackUrl: "/success" })}
+  onClick={() => signIn("github", { callbackUrl: "auth/success" })}
   className="w-full border border-gray-300 text-gray-700 font-medium py-3 rounded-lg hover:bg-gray-50 transition flex items-center justify-center space-x-2"
 >
   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">

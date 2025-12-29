@@ -1,21 +1,32 @@
 import { NextResponse } from "next/server";
-import { verifyJwt } from "@/lib/auth";
+import { getToken } from "next-auth/jwt";
 
-export function middleware(request) {
+export async function middleware(request) {
   const { pathname } = request.nextUrl;
 
-  const token = request.cookies.get("auth_token")?.value;
-  const isAuthenticated = verifyJwt(token);
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET,
+  });
 
-  const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/register");
-  const isDashboardPage = pathname.startsWith("/dashboard") || pathname.startsWith("/transaction") || pathname.startsWith("/loandebt") || pathname.startsWith("/billvault");
+  const isAuthenticated = !!token;
 
-  // If visiting protected route and not logged in
+  const isAuthPage =
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/register");
+
+  const isDashboardPage =
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/transaction") ||
+    pathname.startsWith("/loandebt") ||
+    pathname.startsWith("/billvault");
+
+  // 🔒 Protected route
   if (isDashboardPage && !isAuthenticated) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // If logged in and trying to access login/register
+  // 🔁 Sudah login tapi buka login/register
   if (isAuthenticated && isAuthPage) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
@@ -24,5 +35,12 @@ export function middleware(request) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/transaction/:path*", "/loandebt/:path*", "/billvault/:path*", "/login", "/register"],
+  matcher: [
+    "/dashboard/:path*",
+    "/transaction/:path*",
+    "/loandebt/:path*",
+    "/billvault/:path*",
+    "/login",
+    "/register",
+  ],
 };

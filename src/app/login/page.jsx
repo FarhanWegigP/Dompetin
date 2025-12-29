@@ -221,7 +221,7 @@ export default function LoginPage() {
 
 <button
   type="button"
-  onClick={() => signIn("github", { callbackUrl: "/dashboard" })}
+  onClick={() => signIn("github", { callbackUrl: "/success" })}
   className="w-full border border-gray-300 text-gray-700 font-medium py-3 rounded-lg hover:bg-gray-50 transition flex items-center justify-center space-x-2"
 >
   {/* GitHub Icon */}

@@ -1,22 +1,38 @@
 "use client";
 
-import { useSession, signOut } from "next-auth/react";
 import { LogOut, User, Menu } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function Header() {
-  const { data: session, status } = useSession();
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
-  if (status === "loading") return null;
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await fetch("/api/me", {
+          credentials: "include", // ⬅️ WAJIB
+        });
 
-  const name =
-    session?.user?.nickname ||
-    session?.user?.name ||
-    session?.user?.email ||
-    "User";
+        if (!res.ok) {
+          setUser(null);
+        } else {
+          const data = await res.json();
+          setUser(data);
+        }
+      } catch {
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const email = session?.user?.email || "user@example.com";
+    fetchUser();
+  }, []);
+
+  const name = user?.nickname || "User";
+  const email = user?.email || "user@example.com";
 
   return (
     <header className="fixed top-0 left-0 lg:left-60 right-0 bg-white border-b border-gray-100 px-4 sm:px-6 py-4 flex justify-between items-center z-40 shadow-sm">
@@ -35,7 +51,7 @@ export default function Header() {
         <div>
           <p className="text-xs sm:text-sm text-gray-500">Welcome back,</p>
           <h1 className="text-base sm:text-xl font-semibold text-gray-900">
-            {name}
+            {loading ? "Loading..." : name}
           </h1>
         </div>
       </div>
@@ -68,7 +84,10 @@ export default function Header() {
               </div>
 
               <button
-                onClick={() => signOut({ callbackUrl: "/login" })}
+                onClick={() => {
+                  document.cookie = "auth_token=; path=/; max-age=0";
+                  window.location.href = "/login";
+                }}
                 className="w-full flex items-center space-x-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
               >
                 <LogOut size={16} />

@@ -26,6 +26,14 @@ export async function POST(request) {
         { status: 401 }
       );
     }
+    
+    if (!user.hash_password) {
+      return NextResponse.json(
+        { error: "Akun ini terdaftar via GitHub. Silakan login dengan GitHub." },
+        { status: 400 }
+      );
+    }
+    
 
     // Verifikasi password
     const validPassword = await bcrypt.compare(password, user.hash_password);

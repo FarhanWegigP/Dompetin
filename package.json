@@ -15,10 +15,12 @@
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
     "express": "^5.1.0",
+    "heic2any": "^0.0.4",
     "jose": "^6.1.2",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.545.0",
     "next": "15.5.4",
+    "next-auth": "^4.24.13",
     "next-swagger-doc": "^0.4.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
@@ -27,9 +29,8 @@
     "swagger-ui-dist": "^5.30.2",
     "swagger-ui-express": "^5.0.1",
     "swagger-ui-react": "^5.30.3",
-    "yaml": "^2.8.1",
-    "heic2any": "^0.0.4",
-    "tesseract.js": "^6.0.1"
+    "tesseract.js": "^6.0.1",
+    "yaml": "^2.8.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

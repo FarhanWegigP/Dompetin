@@ -1,7 +1,51 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Plus, Eye, EyeOff, ChevronDown, ArrowDownRight, ArrowUpRight, Wallet } from "lucide-react";
+import { useState, useEffect, memo, useCallback, useMemo } from "react";
+import { Plus, Eye, EyeOff, ChevronDown, ArrowDownRight, ArrowUpRight, Wallet, Search, X } from "lucide-react";
+
+// Memoized Transaction Row Component
+const TransactionRow = memo(({ transaction, hideAmounts }) => (
+  <tr className="hover:bg-gray-50 transition-colors">
+    <td className="px-6 py-4 whitespace-nowrap">
+      <div className="flex items-center gap-3">
+        <div
+          className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+            transaction.type === "income" ? "bg-green-50" : "bg-red-50"
+          }`}
+        >
+          {transaction.type === "income" ? (
+            <ArrowDownRight className="text-green-600" size={18} />
+          ) : (
+            <ArrowUpRight className="text-red-600" size={18} />
+          )}
+        </div>
+        <span
+          className={`font-semibold ${
+            transaction.type === "income" ? "text-green-600" : "text-red-600"
+          }`}
+        >
+          {hideAmounts ? "•••••" : formatCurrency(transaction.amount)}
+        </span>
+      </div>
+    </td>
+    <td className="px-6 py-4">
+      <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">
+        {transaction.category}
+      </span>
+    </td>
+    <td className="px-6 py-4 text-gray-600">{transaction.note}</td>
+    <td className="px-6 py-4 text-gray-500 text-sm">{transaction.date}</td>
+  </tr>
+));
+
+TransactionRow.displayName = 'TransactionRow';
+
+const formatCurrency = (value) =>
+  new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(value || 0);
 
 export default function TransactionPage() {
   const [nominal, setNominal] = useState("");
@@ -24,18 +68,56 @@ export default function TransactionPage() {
   const [totalPages, setTotalPages] = useState(1);
   const PAGE_SIZE = 15;
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-    }).format(value || 0);
-  };
+  const [searchQuery, setSearchQuery] = useState("");
 
   const todayStr = () => new Date().toISOString().split("T")[0];
 
-  // Load semua data awal
+  const categories = useMemo(() => ({
+    pemasukan: [
+      "Bonus", "Bunga Tabungan", "Cashback", "Dividen", "Gaji",
+      "Hadiah & Donasi", "Hadiah / Reward", "Hasil Investasi",
+      "Komisi / Fee", "Penghasilan Freelance", "Penjualan Barang / Jasa",
+      "Tunjangan", "Uang Kaget / Tak Terduga", "Uang Saku", "Lain-lain"
+    ],
+    pengeluaran: [
+      "Belanja Harian", "Hewan Peliharaan", "Hiburan", "Hobi", "Kesehatan",
+      "Keuangan (utang, bunga, biaya bank)", "Kosmetik & Perawatan Diri",
+      "Liburan", "Makanan & Minuman", "Pajak & Administrasi",
+      "Pakaian & Aksesori", "Pendidikan", "Peralatan Rumah Tangga",
+      "Perawatan Kendaraan", "Pulsa & Paket Data", "Sewa / Kontrakan",
+      "Tagihan (Listrik, Air, Internet)", "Transportasi", "Lain-lain"
+    ],
+  }), []);
+
+  const kategoriMapping = useMemo(() => ({
+    "Belanja Harian": 2, "Hiburan": 6, "Transportasi": 3, "Kesehatan": 5,
+    "Kosmetik & Perawatan Diri": 4, "Liburan": 15, "Makanan & Minuman": 1,
+    "Pajak & Administrasi": 17, "Pakaian & Aksesori": 7, "Pendidikan": 10,
+    "Peralatan Rumah Tangga": 12, "Perawatan Kendaraan": 13,
+    "Pulsa & Paket Data": 16, "Sewa / Kontrakan": 9,
+    "Tagihan (Listrik, Air, Internet)": 8, "Hewan Peliharaan": 19,
+    "Hobi": 14, "Keuangan (utang, bunga, biaya bank)": 18, "Lain-lain": 33,
+    "Gaji": 20, "Bonus": 21, "Bunga Tabungan": 27, "Cashback": 30,
+    "Dividen": 28, "Hadiah & Donasi": 11, "Hadiah / Reward": 29,
+    "Hasil Investasi": 25, "Komisi / Fee": 24, "Penghasilan Freelance": 31,
+    "Penjualan Barang / Jasa": 26, "Tunjangan": 22,
+    "Uang Kaget / Tak Terduga": 32, "Uang Saku": 23,
+  }), []);
+
+  const filteredTransactions = useMemo(() => {
+    if (!searchQuery.trim()) return transactions;
+    
+    const query = searchQuery.toLowerCase();
+    return transactions.filter(t =>
+      t.category.toLowerCase().includes(query) ||
+      t.note.toLowerCase().includes(query)
+    );
+  }, [transactions, searchQuery]);
+
+  // Load initial data
   useEffect(() => {
+    let mounted = true;
+
     async function loadInitialData() {
       try {
         setLoading(true);
@@ -46,9 +128,13 @@ export default function TransactionPage() {
           fetch("/api/transaction/latest?limit=5", { credentials: "include" }),
         ]);
 
-        const saldoData = await saldoRes.json();
-        const statsData = await statsRes.json();
-        const latestData = await latestRes.json();
+        if (!mounted) return;
+
+        const [saldoData, statsData, latestData] = await Promise.all([
+          saldoRes.json(),
+          statsRes.json(),
+          latestRes.json(),
+        ]);
 
         setBalance(Number(saldoData.saldo) || 0);
         setIncome(Number(statsData.pemasukan_bulan_ini) || 0);
@@ -71,46 +157,18 @@ export default function TransactionPage() {
       } catch (err) {
         console.error("Failed to load data:", err);
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }
 
     loadInitialData();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  const categories = {
-    pemasukan: [
-      "Bonus", "Bunga Tabungan", "Cashback", "Dividen", "Gaji",
-      "Hadiah & Donasi", "Hadiah / Reward", "Hasil Investasi",
-      "Komisi / Fee", "Penghasilan Freelance", "Penjualan Barang / Jasa",
-      "Tunjangan", "Uang Kaget / Tak Terduga", "Uang Saku", "Lain-lain"
-    ],
-    pengeluaran: [
-      "Belanja Harian", "Hewan Peliharaan", "Hiburan", "Hobi", "Kesehatan",
-      "Keuangan (utang, bunga, biaya bank)", "Kosmetik & Perawatan Diri",
-      "Liburan", "Makanan & Minuman", "Pajak & Administrasi",
-      "Pakaian & Aksesori", "Pendidikan", "Peralatan Rumah Tangga",
-      "Perawatan Kendaraan", "Pulsa & Paket Data", "Sewa / Kontrakan",
-      "Tagihan (Listrik, Air, Internet)", "Transportasi", "Lain-lain"
-    ],
-  };
-
-  const kategoriMapping = {
-    "Belanja Harian": 2, "Hiburan": 6, "Transportasi": 3, "Kesehatan": 5,
-    "Kosmetik & Perawatan Diri": 4, "Liburan": 15, "Makanan & Minuman": 1,
-    "Pajak & Administrasi": 17, "Pakaian & Aksesori": 7, "Pendidikan": 10,
-    "Peralatan Rumah Tangga": 12, "Perawatan Kendaraan": 13,
-    "Pulsa & Paket Data": 16, "Sewa / Kontrakan": 9,
-    "Tagihan (Listrik, Air, Internet)": 8, "Hewan Peliharaan": 19,
-    "Hobi": 14, "Keuangan (utang, bunga, biaya bank)": 18, "Lain-lain": 33,
-    "Gaji": 20, "Bonus": 21, "Bunga Tabungan": 27, "Cashback": 30,
-    "Dividen": 28, "Hadiah & Donasi": 11, "Hadiah / Reward": 29,
-    "Hasil Investasi": 25, "Komisi / Fee": 24, "Penghasilan Freelance": 31,
-    "Penjualan Barang / Jasa": 26, "Tunjangan": 22,
-    "Uang Kaget / Tak Terduga": 32, "Uang Saku": 23,
-  };
-
-  async function loadAllTransactions(pg = 1) {
+  const loadAllTransactions = useCallback(async (pg = 1) => {
     try {
       const res = await fetch(`/api/transaction?page=${pg}&pageSize=${PAGE_SIZE}`, {
         credentials: "include",
@@ -136,9 +194,9 @@ export default function TransactionPage() {
     } catch (err) {
       console.error("Pagination error:", err);
     }
-  }
+  }, []);
 
-  async function handleSubmit() {
+  const handleSubmit = useCallback(async () => {
     if (!nominal || !selectedCategory) {
       alert("Isi nominal & kategori!");
       return;
@@ -151,12 +209,7 @@ export default function TransactionPage() {
     }
 
     const id_jenis = activeTab === "pemasukan" ? 1 : 2;
-    const formattedDate = transactionDate
-      ? (() => {
-          const [year, month, day] = transactionDate.split("-");
-          return `${year}-${month}-${day}`;
-        })()
-      : null;
+    const formattedDate = transactionDate || null;
 
     try {
       const res = await fetch("/api/transaction", {
@@ -175,17 +228,13 @@ export default function TransactionPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        console.error(data);
         alert("Gagal menambah transaksi");
         return;
       }
 
       alert("Transaksi berhasil disimpan!");
 
-      // Update saldo di UI
       setBalance(data.saldo_baru || balance);
-
-      // Reset form
       setNominal("");
       setSelectedCategory("");
       setTransactionNote("");
@@ -196,7 +245,6 @@ export default function TransactionPage() {
       if (showAll) {
         loadAllTransactions(page);
       } else {
-        // Reload latest
         const res = await fetch("/api/transaction/latest?limit=5", {
           credentials: "include",
         });
@@ -218,139 +266,174 @@ export default function TransactionPage() {
     } catch (err) {
       console.error("Submit error:", err);
     }
-  }
+  }, [nominal, selectedCategory, transactionNote, transactionDate, activeTab, kategoriMapping, balance, showAll, page, loadAllTransactions]);
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-screen">
-        <div className="text-gray-500">Memuat data...</div>
+      <div className="p-6 flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-green-50">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-500">Memuat transaksi...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 bg-white-50 min-h-screen pb-24">
-      {/* SALDO ANDA */}
-      <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-lg mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-2">
-            <Wallet size={24} />
-            <span className="text-sm font-medium">Saldo anda</span>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-green-50 p-6 pb-24">
+      {/* Balance Card */}
+      <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-3xl p-8 text-white shadow-xl mb-6 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full -ml-24 -mb-24"></div>
+        
+        <div className="relative z-10">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+                <Wallet size={24} />
+              </div>
+              <span className="text-sm font-medium text-green-100">Total Saldo</span>
+            </div>
+            <button
+              onClick={() => setHideAmounts(!hideAmounts)}
+              className="p-3 hover:bg-white/20 rounded-xl transition-colors backdrop-blur-sm"
+            >
+              {hideAmounts ? <EyeOff size={22} /> : <Eye size={22} />}
+            </button>
           </div>
-          <button
-            onClick={() => setHideAmounts(!hideAmounts)}
-            className="p-2 hover:bg-green-600 rounded-lg transition"
-          >
-            {hideAmounts ? <EyeOff size={20} /> : <Eye size={20} />}
-          </button>
-        </div>
-
-        <div className="text-3xl font-bold">
-          {hideAmounts ? "Rp. ••••••••" : formatCurrency(balance)}
+          <div className="text-4xl font-bold">
+            {hideAmounts ? "Rp ••••••••" : formatCurrency(balance)}
+          </div>
         </div>
       </div>
 
-      {/* SUMMARY CARDS */}
+      {/* Stats */}
       <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-200">
-          <div className="flex items-center space-x-2 mb-2">
-            <div className="w-9 h-9 bg-green-100 rounded-lg flex items-center justify-center">
-              <ArrowDownRight className="text-green-600" size={18} />
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div className="flex items-center space-x-3 mb-3">
+            <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center">
+              <ArrowDownRight className="text-green-600" size={20} />
             </div>
-            <span className="text-gray-600 font-medium text-sm">Pemasukan</span>
+            <span className="text-sm text-gray-500 font-medium">Pemasukan</span>
           </div>
-          <div className="text-xl font-bold text-gray-900">
-            {hideAmounts ? "***" : formatCurrency(income)}
+          <div className="text-2xl font-bold text-gray-900">
+            {hideAmounts ? "•••" : formatCurrency(income)}
           </div>
-          <p className="text-xs text-gray-500 mt-1">Bulan ini</p>
+          <p className="text-xs text-gray-400 mt-1">Bulan ini</p>
         </div>
 
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-200">
-          <div className="flex items-center space-x-2 mb-2">
-            <div className="w-9 h-9 bg-red-100 rounded-lg flex items-center justify-center">
-              <ArrowUpRight className="text-red-600" size={18} />
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div className="flex items-center space-x-3 mb-3">
+            <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
+              <ArrowUpRight className="text-red-600" size={20} />
             </div>
-            <span className="text-gray-600 font-medium text-sm">Pengeluaran</span>
+            <span className="text-sm text-gray-500 font-medium">Pengeluaran</span>
           </div>
-          <div className="text-xl font-bold text-gray-900">
-            {hideAmounts ? "***" : formatCurrency(expense)}
+          <div className="text-2xl font-bold text-gray-900">
+            {hideAmounts ? "•••" : formatCurrency(expense)}
           </div>
-          <p className="text-xs text-gray-500 mt-1">Bulan ini</p>
+          <p className="text-xs text-gray-400 mt-1">Bulan ini</p>
         </div>
       </div>
 
-      {/* TRANSAKSI TERAKHIR */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-        <div className="p-5 border-b border-gray-200 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-gray-900">Transaksi Terakhir</h3>
-          {!showAll ? (
-            <button
-              className="text-sm text-blue-600 hover:underline font-medium flex items-center"
-              onClick={() => {
-                setShowAll(true);
-                loadAllTransactions(1);
-              }}
-            >
-              Tampilkan Semua <ChevronDown size={16} />
-            </button>
-          ) : (
-            <button
-              className="text-sm text-blue-600 hover:underline font-medium"
-              onClick={async () => {
-                setShowAll(false);
-                const res = await fetch("/api/transaction/latest?limit=5", {
-                  credentials: "include",
-                });
-                const data = await res.json();
-                const mapped = data.map((item) => ({
-                  id: item.id_transaksi,
-                  amount: Number(item.nominal),
-                  category: item.kategori?.nama_kategori || "-",
-                  note: item.detail_transaksi || "-",
-                  type: item.jenis_transaksi?.id_jenis === 1 ? "income" : "expense",
-                  date: new Date(item.timestamp).toLocaleDateString("id-ID", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  }),
-                }));
-                setTransactions(mapped);
-              }}
-            >
-              Kembali ke Ringkas
-            </button>
-          )}
+      {/* Transactions Table */}
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="p-6 border-b border-gray-100">
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <h3 className="text-lg font-bold text-gray-900">Riwayat Transaksi</h3>
+            
+            {/* Search Bar */}
+            <div className="relative flex-1 max-w-xs">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+              <input
+                type="text"
+                placeholder="Cari transaksi..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-10 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X size={18} />
+                </button>
+              )}
+            </div>
+
+            {!showAll ? (
+              <button
+                className="text-sm text-green-600 hover:text-green-700 font-medium flex items-center gap-1"
+                onClick={() => {
+                  setShowAll(true);
+                  loadAllTransactions(1);
+                }}
+              >
+                Tampilkan Semua <ChevronDown size={16} />
+              </button>
+            ) : (
+              <button
+                className="text-sm text-green-600 hover:text-green-700 font-medium"
+                onClick={async () => {
+                  setShowAll(false);
+                  setSearchQuery("");
+                  const res = await fetch("/api/transaction/latest?limit=5", {
+                    credentials: "include",
+                  });
+                  const data = await res.json();
+                  const mapped = data.map((item) => ({
+                    id: item.id_transaksi,
+                    amount: Number(item.nominal),
+                    category: item.kategori?.nama_kategori || "-",
+                    note: item.detail_transaksi || "-",
+                    type: item.jenis_transaksi?.id_jenis === 1 ? "income" : "expense",
+                    date: new Date(item.timestamp).toLocaleDateString("id-ID", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    }),
+                  }));
+                  setTransactions(mapped);
+                }}
+              >
+                Tampilkan Ringkas
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">NOMINAL</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">KATEGORI</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">CATATAN</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">TANGGAL</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Nominal
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Kategori
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Catatan
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Tanggal
+                </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
-              {transactions.length === 0 ? (
+            <tbody className="divide-y divide-gray-100">
+              {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                    Belum ada transaksi
+                  <td colSpan={4} className="px-6 py-12 text-center">
+                    <Wallet size={48} className="mx-auto mb-3 text-gray-300" />
+                    <p className="text-gray-400">
+                      {searchQuery ? "Tidak ada transaksi yang cocok" : "Belum ada transaksi"}
+                    </p>
                   </td>
                 </tr>
               ) : (
-                transactions.map((t) => (
-                  <tr key={t.id} className="hover:bg-gray-50 transition">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`font-medium ${t.type === "income" ? "text-green-600" : "text-red-600"}`}>
-                        {hideAmounts ? "***" : formatCurrency(t.amount)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-900">{t.category}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-600">{t.note}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-600">{t.date}</td>
-                  </tr>
+                filteredTransactions.map((t) => (
+                  <TransactionRow key={t.id} transaction={t} hideAmounts={hideAmounts} />
                 ))
               )}
             </tbody>
@@ -358,23 +441,23 @@ export default function TransactionPage() {
         </div>
 
         {showAll && totalPages > 1 && (
-          <div className="flex justify-between items-center p-4 border-t">
+          <div className="flex justify-between items-center p-4 border-t border-gray-100">
             <button
               disabled={page === 1}
               onClick={() => loadAllTransactions(page - 1)}
-              className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300"
+              className="px-4 py-2 bg-gray-100 rounded-xl disabled:opacity-50 hover:bg-gray-200 transition-colors font-medium text-sm"
             >
               Sebelumnya
             </button>
 
-            <span className="text-gray-700 text-sm">
+            <span className="text-gray-600 text-sm font-medium">
               Halaman {page} dari {totalPages}
             </span>
 
             <button
               disabled={page === totalPages}
               onClick={() => loadAllTransactions(page + 1)}
-              className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300"
+              className="px-4 py-2 bg-gray-100 rounded-xl disabled:opacity-50 hover:bg-gray-200 transition-colors font-medium text-sm"
             >
               Berikutnya
             </button>
@@ -382,40 +465,40 @@ export default function TransactionPage() {
         )}
       </div>
 
-      {/* ADD BUTTON */}
+      {/* Floating Add Button */}
       <button
         onClick={() => {
           setTransactionDate(todayStr());
           setIsModalOpen(true);
         }}
-        className="fixed bottom-8 right-8 w-16 h-16 bg-gray-700 hover:bg-gray-800 text-white rounded-2xl shadow-2xl flex items-center justify-center transition transform hover:scale-105 z-40"
+        className="fixed bottom-8 right-8 w-16 h-16 bg-green-600 hover:bg-green-700 text-white rounded-2xl shadow-2xl flex items-center justify-center transition-all transform hover:scale-105 z-40"
       >
         <Plus size={32} />
       </button>
 
-      {/* MODAL TAMBAH TRANSAKSI */}
+      {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b">
-              <h3 className="text-xl font-bold mb-4 text-gray-800">Tambah Transaksi</h3>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-100">
+              <h3 className="text-xl font-bold mb-4 text-gray-900">Tambah Transaksi</h3>
               <div className="flex justify-center space-x-2">
                 <button
                   onClick={() => setActiveTab("pemasukan")}
-                  className={`px-6 py-2 rounded-full font-medium transition ${
+                  className={`px-6 py-2.5 rounded-full font-medium transition-all ${
                     activeTab === "pemasukan"
-                      ? "bg-gray-700 text-white"
-                      : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                      ? "bg-green-600 text-white shadow-lg"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                   }`}
                 >
                   Pemasukan
                 </button>
                 <button
                   onClick={() => setActiveTab("pengeluaran")}
-                  className={`px-6 py-2 rounded-full font-medium transition ${
+                  className={`px-6 py-2.5 rounded-full font-medium transition-all ${
                     activeTab === "pengeluaran"
-                      ? "bg-gray-700 text-white"
-                      : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                      ? "bg-red-600 text-white shadow-lg"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                   }`}
                 >
                   Pengeluaran
@@ -423,14 +506,14 @@ export default function TransactionPage() {
               </div>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-5">
               <div>
                 <label className="block text-sm font-medium mb-2 text-gray-700">Nominal</label>
                 <input
                   type="number"
                   value={nominal}
                   onChange={(e) => setNominal(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 bg-gray-50"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   placeholder="0"
                 />
               </div>
@@ -438,7 +521,7 @@ export default function TransactionPage() {
               <div>
                 <label className="block text-sm font-medium mb-2 text-gray-700">Kategori</label>
                 <select
-                  className="w-full border rounded-xl p-3"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
                 >
@@ -457,7 +540,7 @@ export default function TransactionPage() {
                   type="date"
                   value={transactionDate}
                   onChange={(e) => setTransactionDate(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 bg-gray-50"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 />
               </div>
 
@@ -467,7 +550,7 @@ export default function TransactionPage() {
                   value={transactionNote}
                   onChange={(e) => setTransactionNote(e.target.value)}
                   rows="3"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 resize-none"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
                   placeholder="Tambahkan catatan (opsional)"
                 ></textarea>
               </div>
@@ -475,13 +558,13 @@ export default function TransactionPage() {
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition font-medium"
+                  className="flex-1 px-6 py-3 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors font-medium"
                 >
                   Batal
                 </button>
                 <button
                   onClick={handleSubmit}
-                  className="flex-1 px-6 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition font-medium"
+                  className="flex-1 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-medium shadow-lg"
                 >
                   Simpan
                 </button>

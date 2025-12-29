@@ -1,4 +1,6 @@
 "use client";
+
+import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -211,6 +213,23 @@ export default function LoginPage() {
               )}
             </button>
           </form>
+          <div className="my-6 flex items-center">
+  <div className="flex-1 border-t border-gray-300"></div>
+  <div className="px-3 text-sm text-gray-500">atau</div>
+  <div className="flex-1 border-t border-gray-300"></div>
+</div>
+
+<button
+  type="button"
+  onClick={() => signIn("github", { callbackUrl: "/dashboard" })}
+  className="w-full border border-gray-300 text-gray-700 font-medium py-3 rounded-lg hover:bg-gray-50 transition flex items-center justify-center space-x-2"
+>
+  {/* GitHub Icon */}
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 .5C5.73.5.5 5.74.5 12.02c0 5.1 3.29 9.43 7.86 10.96.57.1.78-.25.78-.55v-2.1c-3.2.7-3.87-1.55-3.87-1.55-.52-1.32-1.27-1.67-1.27-1.67-1.04-.72.08-.71.08-.71 1.15.08 1.76 1.19 1.76 1.19 1.02 1.75 2.67 1.24 3.32.95.1-.74.4-1.24.73-1.52-2.56-.29-5.26-1.28-5.26-5.7 0-1.26.45-2.29 1.19-3.1-.12-.3-.52-1.5.11-3.12 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.18-1.18 3.18-1.18.63 1.62.23 2.82.11 3.12.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.4-5.27 5.69.41.35.78 1.04.78 2.1v3.11c0 .3.2.65.79.54A11.52 11.52 0 0 0 23.5 12C23.5 5.74 18.27.5 12 .5z"/>
+  </svg>
+  <span>Masuk dengan GitHub</span>
+</button>
 
           <p className="text-center text-gray-600 text-sm mt-6">
             Belum punya akun?{" "}

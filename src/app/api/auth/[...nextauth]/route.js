@@ -16,25 +16,27 @@ const handler = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
+        const email =
+          user.email ?? `${user.id}@github-oauth.local`;
+    
         let existingUser = await prisma.user.findUnique({
-          where: { email: user.email.toLowerCase() },
+          where: { email },
         });
-
+    
         if (!existingUser) {
           existingUser = await prisma.user.create({
             data: {
-              email: user.email.toLowerCase(),
+              email,
               nickname: user.name || "github-user",
               hash_password: "OAUTH_USER",
             },
           });
         }
-
+    
         token.id_user = existingUser.id_user;
         token.email = existingUser.email;
         token.nickname = existingUser.nickname;
-
-        // OPTIONAL: bikin app JWT kalau masih mau dipakai API lama
+    
         token.appToken = jwt.sign(
           {
             id_user: existingUser.id_user,
@@ -45,9 +47,9 @@ const handler = NextAuth({
           { expiresIn: "7d" }
         );
       }
-
+    
       return token;
-    },
+    },    
 
     async session({ session, token }) {
       session.user.id_user = token.id_user;

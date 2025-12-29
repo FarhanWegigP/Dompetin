@@ -27,7 +27,7 @@ const handler = NextAuth({
           data: {
             email: user.email.toLowerCase(),
             nickname: user.name || "github-user",
-            hash_password: null, // OAuth user
+            hash_password: "OAUTH_USER", // placeholder for OAuth users (no actual password)
           },
         });
       }

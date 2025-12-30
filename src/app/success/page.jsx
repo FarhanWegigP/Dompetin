@@ -55,7 +55,7 @@ export default function AuthSuccess() {
           {/* Text Content */}
           <div className="text-center space-y-4">
             <h2 className="text-2xl font-bold text-white">
-              Autentikasi Berhasil! 🎉
+              Autentikasi Berhasil!
             </h2>
             <p className="text-green-200">
               Menghubungkan akun GitHub Anda ke Dompetin...

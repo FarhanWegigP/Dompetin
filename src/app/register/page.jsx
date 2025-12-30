@@ -189,11 +189,6 @@ export default function RegisterPage() {
             </div>
           </div>
         </div>
-
-        <div className="space-y-2">
-          <div className="text-green-100 text-sm">Bergabung dengan komunitas kami</div>
-          <div className="text-yellow-300">★★★★★ 10,000+ pengguna aktif</div>
-        </div>
       </div>
 
       {/* Kanan: Form Register */}
@@ -361,31 +356,6 @@ export default function RegisterPage() {
               )}
             </div>
 
-            {/* Terms & Conditions */}
-            <div className="flex items-start space-x-3">
-              <input
-                id="terms"
-                type="checkbox"
-                checked={agreedToTerms}
-                onChange={(e) => {
-                  setAgreedToTerms(e.target.checked);
-                  if (e.target.checked && errors.terms) {
-                    setErrors(prev => ({ ...prev, terms: "" }));
-                  }
-                }}
-                className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 mt-1"
-              />
-              <label htmlFor="terms" className="text-sm text-gray-700">
-                Saya setuju dengan{" "}
-                <Link href="/terms" className="font-semibold text-green-600 hover:text-green-700">
-                  Syarat & Ketentuan
-                </Link>{" "}
-                dan{" "}
-                <Link href="/privacy" className="font-semibold text-green-600 hover:text-green-700">
-                  Kebijakan Privasi
-                </Link>
-              </label>
-            </div>
             {errors.terms && (
               <div className="flex items-center space-x-1 text-red-600 text-sm">
                 <AlertCircle size={16} />

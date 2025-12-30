@@ -92,17 +92,7 @@ export default function LoginPage() {
           <p className="text-green-100">Mengelola keuangan jadi lebih mudah</p>
         </div>
 
-        <div className="space-y-6">
-          <div className="flex items-start space-x-4">
-            <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
-              <CheckCircle className="text-white" size={24} />
-            </div>
-            <div>
-              <h3 className="text-white font-semibold mb-1">Aman & Terpercaya</h3>
-              <p className="text-green-100 text-sm">Enkripsi data tingkat bank</p>
-            </div>
-          </div>
-        </div>
+      
       </div>
 
       {/* Kanan: Form Login */}
@@ -153,9 +143,7 @@ export default function LoginPage() {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-medium text-gray-700">Password</label>
-                <Link href="/forgot-password" className="text-sm text-green-600 hover:text-green-700 font-medium">
-                  Lupa Password?
-                </Link>
+
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-3.5 text-gray-400" size={20} />
@@ -183,19 +171,6 @@ export default function LoginPage() {
                   <span>{errors.password}</span>
                 </div>
               )}
-            </div>
-
-            <div className="flex items-center">
-              <input
-                id="remember"
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 text-green-600"
-              />
-              <label htmlFor="remember" className="ml-2 text-sm text-gray-700">
-                Ingat saya
-              </label>
             </div>
 
             <button
